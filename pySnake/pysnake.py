@@ -1,19 +1,21 @@
 import arcade
 
-WIDTH = 800
-HEIGHT = 800
 CELL_SIZE = 20
+GAME_SIZE = (40, 40)
+WIDTH = CELL_SIZE * GAME_SIZE[0]
+HEIGHT = CELL_SIZE * GAME_SIZE[1] + 20
 TITLE = 'pySnake'
 BG_COLOR = arcade.color.WHITE_SMOKE
 SNAKE_PART_COLOR = arcade.color.GO_GREEN
 SNAKE_HEAD_COLOR = arcade.color.GRAPE
 START_LENGTH = 6  # Начальная длина питона
+START_DELAY = 1/5 # Начальная задержка таймера
 
 
 class Timer:
     """Класс таймера. Нужен для того, чтобы регулироват скорост змеи"""
-    def __init__(self):
-        self.delay = 1/5
+    def __init__(self, start_delay=1/5):
+        self.delay = start_delay
         self.current_time = self.delay
     
     def is_update(self, delta_time: float) -> bool:
@@ -68,15 +70,20 @@ class Snake:
 
     def update(self):
         head = self.part_list[0]
-        for i in range(len(self.part_list) - 1):
-            t_x = self.part_list[i+1]
-            self.part_list[i+1].x = self.part_list[i].x
-
+        prev_x = head.x
+        prev_y = head.y
         head.update()
+        for part in self.part_list[1:]:
+            dx = prev_x - part.x
+            dy = prev_y - part.y
+            prev_x = part.x
+            prev_y = part.y
+            part.x += dx
+            part.y += dy
 
     
     def draw(self):
-        print(self.part_list[0], self.part_list[1])
+        # print(self.part_list[0], self.part_list[1])
         for part in self.part_list:
             part.draw()
 
@@ -86,7 +93,7 @@ class MyGame(arcade.Window):
     def __init__(self):
         super().__init__(WIDTH, HEIGHT, TITLE, update_rate=1/60)
         self.background_color = BG_COLOR
-        self.timer = Timer()
+        self.timer = Timer(start_delay=START_DELAY)
         self.setup()
 
     def setup(self):
