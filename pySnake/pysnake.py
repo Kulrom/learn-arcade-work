@@ -50,12 +50,25 @@ class SnakeHead(SnakePart):
     def __init__(self, x, y):
         super().__init__(x, y)
         self.color = SNAKE_HEAD_COLOR
-        self.dx = 1
-        self.dy = 0
+        self.move = 'right'  # Может быть 'left', 'right', 'up', 'dowm'
+        self._dx = 0
+        self._dy = 0
+
+    def change_move(self, way: str):
+        if way not in ('left', 'right', 'up', 'down'):
+            raise ValueError(f"Направления движения {way} нет")
+        if way == 'left':
+            self._dx, self._dy = -1, 0
+        elif way == 'right':
+            self._dx, self._dy = 1, 0
+        elif way == 'up':
+            self._dx, self._dy = 0, 1
+        elif way == 'down':
+            self._dx, self._dy = 0, -1
 
     def update(self):
-        self.x += self.dx
-        self.y += self.dy
+        self.x += self._dx
+        self.y += self._dy
 
 
 class Snake:
@@ -63,10 +76,14 @@ class Snake:
     def __init__(self, x, y):
         self.part_list = []
         self.length = START_LENGTH
-        self.part_list.append(SnakeHead(x, y))
+        self.head = SnakeHead(x, y)
+        self.part_list.append(self.head)
         for i in range(1, START_LENGTH):
             snake_part = SnakePart(x-i , y)
             self.part_list.append(snake_part)
+
+    def change_move(self, way: str):
+        self.head.change_move(way)
 
     def update(self):
         head = self.part_list[0]
@@ -98,6 +115,17 @@ class MyGame(arcade.Window):
 
     def setup(self):
         self.snake = Snake(10, 10)
+        self.snake.change_move('right')
+
+    def on_key_press(self, symbol, modifiers):
+        if symbol == arcade.key.UP:
+            self.snake.change_move('up')
+        elif symbol == arcade.key.DOWN:
+            self.snake.change_move('down')
+        elif symbol == arcade.key.LEFT:
+            self.snake.change_move('left')
+        elif symbol == arcade.key.RIGHT:
+            self.snake.change_move('right')
     
     def on_update(self, delta_time):
         if self.timer.is_update(delta_time):
