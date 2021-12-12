@@ -4,6 +4,7 @@ CELL_SIZE = 20
 GAME_SIZE = (40, 40)
 WIDTH = CELL_SIZE * GAME_SIZE[0]
 HEIGHT = CELL_SIZE * GAME_SIZE[1] + 20
+print(HEIGHT)
 TITLE = 'pySnake'
 BG_COLOR = arcade.color.WHITE_SMOKE
 SNAKE_PART_COLOR = arcade.color.GO_GREEN
@@ -82,10 +83,7 @@ class Snake:
             snake_part = SnakePart(x-i , y)
             self.part_list.append(snake_part)
 
-    def change_move(self, way: str):
-        self.head.change_move(way)
-
-    def update(self):
+    def _make_step(self):
         head = self.part_list[0]
         prev_x = head.x
         prev_y = head.y
@@ -98,11 +96,27 @@ class Snake:
             part.x += dx
             part.y += dy
 
+    def change_move(self, way: str):
+        self.head.change_move(way)
+
+    def update(self):
+        self._make_step()
+        if self.head.x < 0:
+            self.head.x = GAME_SIZE[0]
+        elif self.head.x > GAME_SIZE[0] - 1:
+            self.head.x = 0
+        elif self.head.y < 0:
+            self.head.y = GAME_SIZE[1]
+        elif self.head.y > GAME_SIZE[1] - 1:
+            self.head.y = 0
+
     
     def draw(self):
         # print(self.part_list[0], self.part_list[1])
         for part in self.part_list:
             part.draw()
+        text = f'x = {self.head.x}, y = {self.head.y}'
+        arcade.draw_text(text, 0, 800, color=arcade.color.BLACK)
 
 
 
