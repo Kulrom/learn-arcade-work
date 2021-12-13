@@ -195,7 +195,7 @@ class MyGame(arcade.Window):
         super().__init__(WIDTH, HEIGHT, TITLE, update_rate=1 / 60)
         self.background_color = BG_COLOR
 
-        self.timer = Timer(start_delay=START_DELAY)  # создаём таймер
+        self.timer: Optional[Timer] = None  # создаём таймер
         self.snake: Optional[Snake] = None  # переменная для змеи
         self.rabbit: Optional[Rabbit] = None  # переменная для кролика
         self.score = 0  # Переменная для подсчёта очков
@@ -214,6 +214,7 @@ class MyGame(arcade.Window):
         self.change_pos_rabbit()
         self.snake.change_move('right')
         self.status = 'game'
+        self.timer = Timer(start_delay=START_DELAY)
         self.update_score()
 
     def on_key_press(self, symbol, modifiers):
