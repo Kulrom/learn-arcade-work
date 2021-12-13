@@ -16,6 +16,7 @@ SNAKE_PART_COLOR = arcade.color.GO_GREEN
 SNAKE_HEAD_COLOR = arcade.color.GRAPE
 COLOR_INFO_BAR = (204, 222, 131)
 
+
 class Timer:
     """Класс таймера. Нужен для того, чтобы регулироват скорост змеи"""
 
