@@ -1,4 +1,5 @@
 import arcade
+import random
 from typing import Optional
 
 CELL_SIZE = 20
@@ -9,16 +10,17 @@ TITLE = 'pySnake'
 BG_COLOR = arcade.color.WHITE_SMOKE
 SNAKE_PART_COLOR = arcade.color.GO_GREEN
 SNAKE_HEAD_COLOR = arcade.color.GRAPE
-START_LENGTH = 15  # Начальная длина питона
-START_DELAY = 1/5  # Начальная задержка таймера
+START_LENGTH = 6  # Начальная длина питона
+START_DELAY = 1 / 5  # Начальная задержка таймера
 
 
 class Timer:
     """Класс таймера. Нужен для того, чтобы регулироват скорост змеи"""
-    def __init__(self, start_delay=1/5):
+
+    def __init__(self, start_delay=1 / 5):
         self.delay = start_delay
         self.current_time = self.delay
-    
+
     def is_update(self, delta_time: float) -> bool:
         self.current_time -= delta_time
         if self.current_time <= 0:
@@ -29,17 +31,18 @@ class Timer:
 
 class SnakePart:
     """Класс, описывающий часть питона"""
+
     def __init__(self, x, y):
         self.x = x
         self.y = y
         self.color = SNAKE_PART_COLOR
-    
+
     def update(self):
         pass
 
     def draw(self):
-        x = self.x * CELL_SIZE + CELL_SIZE/2
-        y = self.y * CELL_SIZE + CELL_SIZE/2
+        x = self.x * CELL_SIZE + CELL_SIZE / 2
+        y = self.y * CELL_SIZE + CELL_SIZE / 2
         arcade.draw_circle_filled(x, y, CELL_SIZE / 2, self.color)
 
     def __str__(self):
@@ -48,6 +51,7 @@ class SnakePart:
 
 class SnakeHead(SnakePart):
     """Голова питона"""
+
     def __init__(self, x, y):
         super().__init__(x, y)
         self.color = SNAKE_HEAD_COLOR
@@ -60,9 +64,9 @@ class SnakeHead(SnakePart):
             raise ValueError(f"Направления движения {way} нет")
         # Проверяем чтобы не было заднего хода
         if ((way == 'left' and self.move == 'right') or
-            (way == 'right' and self.move == 'left') or
-            (way == 'up' and self.move == 'down') or
-            (way == 'down' and self.move == 'up')):
+                (way == 'right' and self.move == 'left') or
+                (way == 'up' and self.move == 'down') or
+                (way == 'down' and self.move == 'up')):
             return
         # Устанавливаем движение через _dx, _dy
         if way == 'left':
@@ -85,22 +89,24 @@ class SnakeHead(SnakePart):
 
 class Snake:
     """Класс описывающий всего питона целиком"""
+
     def __init__(self, x, y):
         self.is_game_over = False
-        self.part_list = []
+        self._part_list = []
         self.length = START_LENGTH
         self.head = SnakeHead(x, y)
-        self.part_list.append(self.head)
+        self._part_list.append(self.head)
+
         for i in range(1, START_LENGTH):
-            snake_part = SnakePart(x-i, y)
-            self.part_list.append(snake_part)
+            snake_part = SnakePart(x - i, y)
+            self._part_list.append(snake_part)
 
     def _make_step(self):
-        head = self.part_list[0]
+        head = self._part_list[0]
         prev_x = head.x
         prev_y = head.y
         head.update()
-        for part in self.part_list[1:]:
+        for part in self._part_list[1:]:
             dx = prev_x - part.x
             dy = prev_y - part.y
             prev_x = part.x
@@ -122,10 +128,21 @@ class Snake:
     def _check_self_byte(self):
         x = self.head.x
         y = self.head.y
-        for part in self.part_list[1:]:
+        for part in self._part_list[1:]:
             if part.x == x and part.y == y:
                 self.is_game_over = True
                 break
+
+    def is_eat(self, rabbit: 'Rabbit') -> bool:
+        """Проверяет был ли съеден кролик"""
+        if rabbit.x == self.head.x and rabbit.y == self.head.y:
+            return True
+        else:
+            return False
+
+    def add_part(self):
+        """Увеличивает длину змеи"""
+        self._part_list.append(SnakePart(0, 0))
 
     def change_move(self, way: str):
         self.head.change_move(way)
@@ -134,24 +151,43 @@ class Snake:
         self._make_step()  # Делаем шаг
         self._check_borders()  # Проверяем выход за границы экрана
         self._check_self_byte()  # Проверяем на самоукус
-    
+
     def draw(self):
         # print(self.part_list[0], self.part_list[1])
-        for part in self.part_list[::-1]:
+        for part in self._part_list[::-1]:
             part.draw()
+
+
+class Rabbit:
+    IMG = ':resources:images/items/gold_1.png'
+
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self._sprite = arcade.Sprite(self.IMG)
+        print(self._sprite.width, self._sprite.height)
+        self._sprite.scale = CELL_SIZE / self._sprite.height
+
+    def draw(self):
+        self._sprite.center_x = self.x * CELL_SIZE + CELL_SIZE / 2
+        self._sprite.center_y = self.y * CELL_SIZE + CELL_SIZE / 2
+        self._sprite.draw()
 
 
 class MyGame(arcade.Window):
     def __init__(self):
-        super().__init__(WIDTH, HEIGHT, TITLE, update_rate=1/60)
+        super().__init__(WIDTH, HEIGHT, TITLE, update_rate=1 / 60)
         self.background_color = BG_COLOR
         self.timer = Timer(start_delay=START_DELAY)
         self.snake: Optional[Snake] = None
+        self.rabbit: Optional[Rabbit] = None
         self.status = ''  # Состояние игры (game, game_over)
+
         self.setup()
 
     def setup(self):
         self.snake = Snake(10, 10)
+        self.rabbit = Rabbit(15, 10)
         self.snake.change_move('right')
         self.status = 'game'
 
@@ -165,14 +201,18 @@ class MyGame(arcade.Window):
                 self.snake.change_move('left')
             elif symbol == arcade.key.RIGHT:
                 self.snake.change_move('right')
-    
+
     def on_update(self, delta_time):
         if self.status == 'game':
             # Дожидаемся таймера
-            if self.timer.is_update(delta_time):
-                self.snake.update()
-                if self.snake.is_game_over:
-                    self.status = 'game_over'
+            if not self.timer.is_update(delta_time):
+                return
+            self.snake.update()
+            if self.snake.is_game_over:
+                self.status = 'game_over'
+            if self.snake.is_eat(self.rabbit):
+                self.rabbit._x = random.randrange(GAME_SIZE[0])
+                self.rabbit.y = random.randrange(GAME_SIZE[1])
         elif self.status == 'game_over':
             pass
 
@@ -180,6 +220,7 @@ class MyGame(arcade.Window):
         arcade.start_render()
         if self.status == 'game':
             self.snake.draw()
+            self.rabbit.draw()
             text = f'x = {self.snake.head.x}, y = {self.snake.head.y}'
             arcade.draw_text(text, 0, 800, color=arcade.color.BLACK)
         elif self.status == 'game_over':
