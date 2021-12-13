@@ -2,27 +2,26 @@ import arcade
 import random
 from typing import Optional
 
-CELL_SIZE = 20  #
-GAME_SIZE = (40, 40)
-INFO_HEIGHT = 20
-WIDTH = CELL_SIZE * GAME_SIZE[0]
-HEIGHT = CELL_SIZE * GAME_SIZE[1] + INFO_HEIGHT
 TITLE = 'pySnake'
+CELL_SIZE = 20  # Размер "клетки"
+GAME_SIZE = (40, 40)  # Размер игрового поля
+INFO_HEIGHT = 20  # Высота строки информации
+WIDTH = CELL_SIZE * GAME_SIZE[0]  # Ширина окна
+HEIGHT = CELL_SIZE * GAME_SIZE[1] + INFO_HEIGHT  # Высота окна
+START_LENGTH = 6  # Начальная длина питона
+START_DELAY = 1 / 5  # Начальная задержка таймера в секундах
+DELAY_STEP_FACTOR = 0.98  # Множитель, на который уменьшается задержка таймера при каждом съедании кролика
 BG_COLOR = arcade.color.WHITE_SMOKE
 SNAKE_PART_COLOR = arcade.color.GO_GREEN
 SNAKE_HEAD_COLOR = arcade.color.GRAPE
 COLOR_INFO_BAR = (204, 222, 131)
-START_LENGTH = 6  # Начальная длина питона
-START_DELAY = 1 / 5  # Начальная задержка таймера
-DELAY_STEP_FACTOR = 0.98
-
 
 class Timer:
     """Класс таймера. Нужен для того, чтобы регулироват скорост змеи"""
 
-    def __init__(self, start_delay=1 / 5):
-        self.delay = start_delay
-        self.current_time = self.delay
+    def __init__(self, start_delay: float):
+        self.delay = start_delay  # Задержка
+        self.current_time = self.delay  # Время оставшееся до "тика"
 
     def is_update(self, delta_time: float) -> bool:
         self.current_time -= delta_time
@@ -44,7 +43,8 @@ class SnakePart:
         pass
 
     def draw(self):
-        if (0 <= self.x < GAME_SIZE[0] and
+        """Отрисовывает секцию змеи"""
+        if (0 <= self.x < GAME_SIZE[0] and  # Если секция внутри игрового поля, то отрисовываем её
                 0 <= self.y < GAME_SIZE[1]):
             x = self.x * CELL_SIZE + CELL_SIZE / 2
             y = self.y * CELL_SIZE + CELL_SIZE / 2
@@ -92,9 +92,10 @@ class SnakeHead(SnakePart):
 class Snake:
     """Класс описывающий всего питона целиком"""
 
-    def __init__(self, x, y):
-        self.is_game_over = False
-        self.head = SnakeHead(x, y)
+    def __init__(self, x: int, y: int):
+        self.is_game_over = False  # Флаг, отвечает за самоукус
+        self.is_changed_move = False  # Флаг отвечает за то чтобы за один тик была только одна смена движения
+        self.head = SnakeHead(x, y)  # голова змеи
         self._part_list = []
         # self._length = START_LENGTH
         self._part_list.append(self.head)
@@ -154,12 +155,15 @@ class Snake:
         self._part_list.append(SnakePart(-10, -10))
 
     def change_move(self, way: str):
-        self.head.change_move(way)
+        if not self.is_changed_move:
+            self.head.change_move(way)
+            self.is_changed_move = True
 
     def update(self):
         self._make_step()  # Делаем шаг
         self._check_borders()  # Проверяем выход за границы экрана
         self._check_self_byte()  # Проверяем на самоукус
+        self.is_changed_move = False
 
     def draw(self):
         for part in self._part_list[::-1]:
@@ -190,10 +194,10 @@ class MyGame(arcade.Window):
         super().__init__(WIDTH, HEIGHT, TITLE, update_rate=1 / 60)
         self.background_color = BG_COLOR
 
-        self.timer = Timer(start_delay=START_DELAY)
-        self.snake: Optional[Snake] = None
-        self.rabbit: Optional[Rabbit] = None
-        self.score = 0
+        self.timer = Timer(start_delay=START_DELAY)  # создаём таймер
+        self.snake: Optional[Snake] = None  # переменная для змеи
+        self.rabbit: Optional[Rabbit] = None  # переменная для кролика
+        self.score = 0  # Переменная для подсчёта очков
         self.status = ''  # Состояние игры (game, game_over, pause)
 
         self.setup()
@@ -202,15 +206,17 @@ class MyGame(arcade.Window):
         self.score = self.snake.length - START_LENGTH
 
     def setup(self):
+        """Делает настройки для начала игры"""
         self.snake = Snake(random.randint(START_LENGTH + 10, GAME_SIZE[0] - 10),
                            random.randint(10, GAME_SIZE[1] - 10))
         self.rabbit = Rabbit(0, 0)
-        self.ch_pos_rabbit()
+        self.change_pos_rabbit()
         self.snake.change_move('right')
         self.status = 'game'
         self.update_score()
 
     def on_key_press(self, symbol, modifiers):
+        # Режим игры
         if self.status == 'game':
             if symbol == arcade.key.UP:
                 self.snake.change_move('up')
@@ -222,20 +228,22 @@ class MyGame(arcade.Window):
                 self.snake.change_move('right')
             elif symbol == arcade.key.SPACE:
                 self.status = 'pause'
+        # Режим паузы
         elif self.status == 'pause':
             if symbol == arcade.key.SPACE:
                 self.status = 'game'
+        # Режим Game Over
         elif self.status == 'game_over':
             if symbol == arcade.key.SPACE:
                 self.setup()
                 self.status = 'game'
 
-    def ch_pos_rabbit(self):
-        """Создаёт нового кролика"""
+    def change_pos_rabbit(self):
+        """Меняет позицию кролика"""
         self.rabbit.x = random.randrange(GAME_SIZE[0])
         self.rabbit.y = random.randrange(GAME_SIZE[1])
         if self.snake.is_in_snake(self.rabbit.x, self.rabbit.y):
-            self.ch_pos_rabbit()
+            self.change_pos_rabbit()
 
     def on_update(self, delta_time):
         if self.status == 'game':
@@ -247,7 +255,7 @@ class MyGame(arcade.Window):
                 self.status = 'game_over'
             # Если зайца съели
             if self.snake.is_eat(self.rabbit):
-                self.ch_pos_rabbit()
+                self.change_pos_rabbit()
                 self.snake.add_part()
                 self.timer.delay *= DELAY_STEP_FACTOR
             self.update_score()
@@ -267,13 +275,16 @@ class MyGame(arcade.Window):
 
     def on_draw(self):
         arcade.start_render()
+        # Режим игры
         if self.status == 'game':
             self.draw_game_frame()
+        # Режим паузы
         elif self.status == 'pause':
             self.draw_game_frame()
             text = 'Пауза'
             arcade.draw_text(text, WIDTH // 2, HEIGHT // 2, color=arcade.color.RUBY,
                              font_size=30, anchor_x='center', bold=True)
+        # режим Game Over
         elif self.status == 'game_over':
             self.draw_game_frame()
             text = 'Игра окончена'
