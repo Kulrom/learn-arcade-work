@@ -3,8 +3,8 @@ import random
 from typing import Optional
 
 TITLE = 'pySnake'
-CELL_SIZE = 20  # Размер "клетки"
-GAME_SIZE = (40, 40)  # Размер игрового поля
+CELL_SIZE = 25  # Размер "клетки"
+GAME_SIZE = (30, 30)  # Размер игрового поля
 INFO_HEIGHT = 20  # Высота строки информации
 WIDTH = CELL_SIZE * GAME_SIZE[0]  # Ширина окна
 HEIGHT = CELL_SIZE * GAME_SIZE[1] + INFO_HEIGHT  # Высота окна
@@ -198,6 +198,7 @@ class Rabbit:
             sprite = arcade.Sprite(f':resources:images/items/gold_{i}.png', flipped_horizontally=True)
             sprite.scale = CELL_SIZE / sprite.height
             self.sprites.append(sprite)
+        self.texture = self.sprites[0]
 
     def draw(self):
         self.texture.center_x = self.x * CELL_SIZE + CELL_SIZE / 2
@@ -221,14 +222,33 @@ class MyGame(arcade.Window):
         self.snake: Optional[Snake] = None  # переменная для змеи
         self.rabbit: Optional[Rabbit] = None  # переменная для кролика
         self.score = 0  # Переменная для подсчёта очков
-        self.status = ''  # Состояние игры (game, game_over, pause)
+        self.status = ''  # Состояние игры (game, game_over, pause, intro)
         self.font = 'Kenney Blocks'
+        self.zastavka = arcade.Sprite('images\zastavka.png')
 
-        self.setup()
+        self.setup_intro()
 
     def update_score(self):
         self.score = self.snake.length - START_LENGTH
 
+    def setup_intro(self):
+        """Настройки для вступления"""
+        self.status = 'intro'
+
+        self.zastavka.scale = 0.7
+        self.zastavka.center_x = WIDTH / 2
+        self.zastavka.center_y = HEIGHT /2 
+
+    def draw_intro(self):
+        self.zastavka.draw()
+        text = 'PySnake'
+        text_2 = 'press <S> to start'
+        arcade.draw_text(text, WIDTH // 2, HEIGHT * 0.8, color=arcade.color.RUBY, font_size=40,
+                             anchor_x='center', font_name=self.font)
+
+        arcade.draw_text(text_2, WIDTH // 2, HEIGHT * 0.2, color=arcade.color.RUBY, font_size=20,
+                             anchor_x='center', font_name=self.font)
+    
     def setup(self):
         """Делает настройки для начала игры"""
         self.snake = Snake(random.randint(START_LENGTH + 10, GAME_SIZE[0] - 10),
@@ -262,6 +282,10 @@ class MyGame(arcade.Window):
             if symbol == arcade.key.SPACE:
                 self.setup()
                 self.status = 'game'
+        elif self.status == 'intro':
+            if symbol == arcade.key.S:
+                self.setup()
+                self.status = 'game'
 
     def change_pos_rabbit(self):
         """Меняет позицию кролика"""
@@ -291,7 +315,7 @@ class MyGame(arcade.Window):
     def draw_info(self):
         arcade.draw_lrtb_rectangle_filled(0, WIDTH, HEIGHT, HEIGHT - INFO_HEIGHT, color=COLOR_INFO_BAR)
         text = f'Score: {self.score}'
-        arcade.draw_text(text, 0, 800, color=arcade.color.BLACK, font_name=self.font)
+        arcade.draw_text(text, 10, HEIGHT-18, color=arcade.color.BLACK, font_name=self.font)
 
     def draw_game_frame(self):
         """Отрисовывает игровой кадр"""
@@ -319,6 +343,10 @@ class MyGame(arcade.Window):
                              anchor_x='center', font_name=self.font)
             arcade.draw_text(text_2, WIDTH // 2, HEIGHT // 2 - 30, color=arcade.color.RUBY, font_size=20,
                              anchor_x='center', font_name=self.font)
+        
+        elif self.status == 'intro':
+            self.draw_intro()
+            
 
 
 if __name__ == '__main__':
