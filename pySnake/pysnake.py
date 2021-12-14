@@ -98,7 +98,8 @@ class Snake:
         self.is_changed_move = False  # Флаг отвечает за то чтобы за один тик была только одна смена движения
         self.head = SnakeHead(x, y)  # голова змеи
         self._part_list = []
-        # self._length = START_LENGTH
+        self.eat_sound = arcade.Sound(':resources:sounds/hurt2.wav')
+        self.self_byte_sound = arcade.Sound(':resources:sounds/gameover2.wav')
         self._part_list.append(self.head)
 
         for i in range(1, START_LENGTH):
@@ -135,11 +136,13 @@ class Snake:
         for part in self._part_list[1:]:
             if part.x == x and part.y == y:
                 self.is_game_over = True
+                self.self_byte_sound.play()
                 break
 
     def is_eat(self, rabbit: 'Rabbit') -> bool:
         """Проверяет был ли съеден кролик"""
         if rabbit.x == self.head.x and rabbit.y == self.head.y:
+            self.eat_sound.play(volume=0.3)
             return True
         else:
             return False
@@ -176,18 +179,37 @@ class Snake:
 
 
 class Rabbit:
-    IMG = ':resources:images/items/gold_1.png'
+    ANIMATION_SPEED = 8  # Количество тактов на кадр
 
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self._sprite = arcade.Sprite(self.IMG)
-        self._sprite.scale = CELL_SIZE / self._sprite.height
+        self.cur_texture = 0
+        self.sprites = []
+        self.texture: Optional[arcade.Sprite] = None
+        self._load_textures()
+
+    def _load_textures(self):
+        for i in range(1,5):
+            sprite = arcade.Sprite(f':resources:images/items/gold_{i}.png')
+            sprite.scale = CELL_SIZE / sprite.height
+            self.sprites.append(sprite)
+        for i in range(3, 1, -1):
+            sprite = arcade.Sprite(f':resources:images/items/gold_{i}.png', flipped_horizontally=True)
+            sprite.scale = CELL_SIZE / sprite.height
+            self.sprites.append(sprite)
 
     def draw(self):
-        self._sprite.center_x = self.x * CELL_SIZE + CELL_SIZE / 2
-        self._sprite.center_y = self.y * CELL_SIZE + CELL_SIZE / 2
-        self._sprite.draw()
+        self.texture.center_x = self.x * CELL_SIZE + CELL_SIZE / 2
+        self.texture.center_y = self.y * CELL_SIZE + CELL_SIZE / 2
+        self.texture.draw()
+
+    def update_animation(self, delta_time=1/60):
+        self.cur_texture += 1
+        if self.cur_texture >= len(self.sprites) * self.ANIMATION_SPEED:
+            self.cur_texture = 0
+        frame = self.cur_texture // self.ANIMATION_SPEED
+        self.texture = self.sprites[frame]
 
 
 class MyGame(arcade.Window):
@@ -200,6 +222,7 @@ class MyGame(arcade.Window):
         self.rabbit: Optional[Rabbit] = None  # переменная для кролика
         self.score = 0  # Переменная для подсчёта очков
         self.status = ''  # Состояние игры (game, game_over, pause)
+        self.font = 'Kenney Blocks'
 
         self.setup()
 
@@ -250,6 +273,7 @@ class MyGame(arcade.Window):
     def on_update(self, delta_time):
         if self.status == 'game':
             # Дожидаемся таймера
+            self.rabbit.update_animation()
             if not self.timer.is_update(delta_time):
                 return
             self.snake.update()
@@ -267,7 +291,7 @@ class MyGame(arcade.Window):
     def draw_info(self):
         arcade.draw_lrtb_rectangle_filled(0, WIDTH, HEIGHT, HEIGHT - INFO_HEIGHT, color=COLOR_INFO_BAR)
         text = f'Score: {self.score}'
-        arcade.draw_text(text, 0, 800, color=arcade.color.BLACK)
+        arcade.draw_text(text, 0, 800, color=arcade.color.BLACK, font_name=self.font)
 
     def draw_game_frame(self):
         """Отрисовывает игровой кадр"""
@@ -283,18 +307,18 @@ class MyGame(arcade.Window):
         # Режим паузы
         elif self.status == 'pause':
             self.draw_game_frame()
-            text = 'Пауза'
+            text = 'Pause'
             arcade.draw_text(text, WIDTH // 2, HEIGHT // 2, color=arcade.color.RUBY,
-                             font_size=30, anchor_x='center', bold=True)
+                             font_size=30, anchor_x='center', font_name=self.font)
         # режим Game Over
         elif self.status == 'game_over':
             self.draw_game_frame()
-            text = 'Игра окончена'
-            text_2 = 'Нажмите <пробел> для начала новой игры'
+            text = 'Game Over'
+            text_2 = 'Press <Space> to restart game'
             arcade.draw_text(text, WIDTH // 2, HEIGHT // 2, color=arcade.color.RUBY, font_size=40,
-                             anchor_x='center', bold=True)
+                             anchor_x='center', font_name=self.font)
             arcade.draw_text(text_2, WIDTH // 2, HEIGHT // 2 - 30, color=arcade.color.RUBY, font_size=20,
-                             anchor_x='center')
+                             anchor_x='center', font_name=self.font)
 
 
 if __name__ == '__main__':
