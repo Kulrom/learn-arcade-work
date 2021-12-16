@@ -1,208 +1,122 @@
 """
-Moving Sprite Stress Test
-
-Simple program to test how fast we can draw sprites that are moving
-
-Artwork from https://kenney.nl
-
-If Python and Arcade are installed, this example can be run from the command line with:
-python -m arcade.examples.stress_test_draw_moving
+Platformer Game
 """
-
-import random
 import arcade
-import os
-import timeit
-import time
-import collections
-import pyglet
 
-# --- Constants ---
-SPRITE_SCALING_COIN = 0.25
-SPRITE_NATIVE_SIZE = 128
-SPRITE_SIZE = int(SPRITE_NATIVE_SIZE * SPRITE_SCALING_COIN)
-COIN_COUNT_INCREMENT = 1000
+# Constants
+SCREEN_WIDTH = 1000
+SCREEN_HEIGHT = 650
+SCREEN_TITLE = "Platformer"
 
-STOP_COUNT = 15000
-RESULTS_FILE = "stress_test_draw_moving_arcade.csv"
+# Constants used to scale our sprites from their original size
+CHARACTER_SCALING = 1
+TILE_SCALING = 0.5
 
-SCREEN_WIDTH = 1800
-SCREEN_HEIGHT = 1000
-SCREEN_TITLE = "Moving Sprite Stress Test"
-
-
-class FPSCounter:
-    def __init__(self):
-        self.time = time.perf_counter()
-        self.frame_times = collections.deque(maxlen=60)
-
-    def tick(self):
-        t1 = time.perf_counter()
-        dt = t1 - self.time
-        self.time = t1
-        self.frame_times.append(dt)
-
-    def get_fps(self):
-        total_time = sum(self.frame_times)
-        if total_time == 0:
-            return 0
-        else:
-            return len(self.frame_times) / sum(self.frame_times)
-
-
-class Coin(arcade.Sprite):
-
-    def update(self):
-        """
-        Update the sprite.
-        """
-        self.position = (self.position[0] + self.change_x, self.position[1] + self.change_y)
+# Movement speed of player, in pixels per frame
+PLAYER_MOVEMENT_SPEED = 5
 
 
 class MyGame(arcade.Window):
-    """ Our custom Window Class"""
+    """
+    Main application class.
+    """
 
     def __init__(self):
-        """ Initializer """
-        # Call the parent class initializer
+
+        # Call the parent class and set up the window
         super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
 
-        # Set the working directory (where we expect to find files) to the same
-        # directory this .py file is in. You can leave this out of your own
-        # code, but it is needed to easily run the examples using "python -m"
-        # as mentioned at the top of this program.
-        file_path = os.path.dirname(os.path.abspath(__file__))
-        os.chdir(file_path)
+        # Our Scene Object
+        self.scene = None
 
-        # Variables that will hold sprite lists
-        self.coin_list = None
+        # Separate variable that holds the player sprite
+        self.player_sprite = None
 
-        self.processing_time = 0
-        self.draw_time = 0
-        self.program_start_time = timeit.default_timer()
-        self.sprite_count_list = []
-        self.fps_list = []
-        self.processing_time_list = []
-        self.drawing_time_list = []
-        self.last_fps_reading = 0
-        self.fps = FPSCounter()
+        # Our physics engine
+        self.physics_engine = None
 
-        arcade.set_background_color(arcade.color.AMAZON)
-
-        # Open file to save timings
-        self.results_file = open(RESULTS_FILE, "w")
-
-    def add_coins(self):
-
-        # Create the coins
-        for i in range(COIN_COUNT_INCREMENT):
-            # Create the coin instance
-            # Coin image from kenney.nl
-            coin = Coin(":resources:images/items/coinGold.png", SPRITE_SCALING_COIN)
-
-            # Position the coin
-            coin.center_x = random.randrange(SPRITE_SIZE, SCREEN_WIDTH - SPRITE_SIZE)
-            coin.center_y = random.randrange(SPRITE_SIZE, SCREEN_HEIGHT - SPRITE_SIZE)
-
-            coin.change_x = random.randrange(-3, 4)
-            coin.change_y = random.randrange(-3, 4)
-
-            # Add the coin to the lists
-            self.coin_list.append(coin)
+        arcade.set_background_color(arcade.csscolor.CORNFLOWER_BLUE)
 
     def setup(self):
-        """ Set up the game and initialize the variables. """
+        """Set up the game here. Call this function to restart the game."""
 
-        # Sprite lists
-        self.coin_list = arcade.SpriteList(use_spatial_hash=False)
+        # Initialize Scene
+        self.scene = arcade.Scene()
+
+        # Set up the player, specifically placing it at these coordinates.
+        image_source = ":resources:images/animated_characters/female_adventurer/femaleAdventurer_idle.png"
+        self.player_sprite = arcade.Sprite(image_source, CHARACTER_SCALING)
+        self.player_sprite.center_x = 64
+        self.player_sprite.center_y = 128
+        self.scene.add_sprite("Player", self.player_sprite)
+
+        # Create the ground
+        # This shows using a loop to place multiple sprites horizontally
+        for x in range(0, 1250, 64):
+            wall = arcade.Sprite(":resources:images/tiles/grassMid.png", TILE_SCALING)
+            wall.center_x = x
+            wall.center_y = 32
+            self.scene.add_sprite("Walls", wall)
+
+        # Put some crates on the ground
+        # This shows using a coordinate list to place sprites
+        coordinate_list = [[512, 96], [256, 96], [768, 96]]
+
+        for coordinate in coordinate_list:
+            # Add a crate on the ground
+            wall = arcade.Sprite(
+                ":resources:images/tiles/boxCrate_double.png", TILE_SCALING
+            )
+            wall.position = coordinate
+            self.scene.add_sprite("Walls", wall)
+
+        # Create the 'physics engine'
+        self.physics_engine = arcade.PhysicsEngineSimple(
+            self.player_sprite, self.scene.get_sprite_list("Walls")
+        )
 
     def on_draw(self):
-        """ Draw everything """
+        """Render the screen."""
 
-        # Start timing how long this takes
-        draw_start_time = timeit.default_timer()
-
+        # Clear the screen to the background color
         arcade.start_render()
-        self.coin_list.draw()
 
-        # Display info on sprites
-        # output = f"Sprite count: {len(self.coin_list):,}"
-        # arcade.draw_text(output, 20, SCREEN_HEIGHT - 20, arcade.color.BLACK, 16)
-        #
-        # # Display timings
-        # output = f"Processing time: {self.processing_time:.3f}"
-        # arcade.draw_text(output, 20, SCREEN_HEIGHT - 40, arcade.color.BLACK, 16)
-        #
-        # output = f"Drawing time: {self.draw_time:.3f}"
-        # arcade.draw_text(output, 20, SCREEN_HEIGHT - 60, arcade.color.BLACK, 16)
-        #
-        # fps = self.fps.get_fps()
-        # output = f"FPS: {fps:3.0f}"
-        # arcade.draw_text(output, 20, SCREEN_HEIGHT - 80, arcade.color.BLACK, 16)
+        # Draw our Scene
+        self.scene.draw()
 
-        self.draw_time = timeit.default_timer() - draw_start_time
-        self.fps.tick()
+    def on_key_press(self, key, modifiers):
+        """Called whenever a key is pressed."""
 
-    def update(self, delta_time):
-        # Start update timer
-        start_time = timeit.default_timer()
+        if key == arcade.key.UP or key == arcade.key.W:
+            self.player_sprite.change_y = PLAYER_MOVEMENT_SPEED
+        elif key == arcade.key.DOWN or key == arcade.key.S:
+            self.player_sprite.change_y = -PLAYER_MOVEMENT_SPEED
+        elif key == arcade.key.LEFT or key == arcade.key.A:
+            self.player_sprite.change_x = -PLAYER_MOVEMENT_SPEED
+        elif key == arcade.key.RIGHT or key == arcade.key.D:
+            self.player_sprite.change_x = PLAYER_MOVEMENT_SPEED
 
-        self.coin_list.update()
+    def on_key_release(self, key, modifiers):
+        """Called when the user releases a key."""
 
-        for sprite in self.coin_list:
+        if key == arcade.key.UP or key == arcade.key.W:
+            self.player_sprite.change_y = 0
+        elif key == arcade.key.DOWN or key == arcade.key.S:
+            self.player_sprite.change_y = 0
+        elif key == arcade.key.LEFT or key == arcade.key.A:
+            self.player_sprite.change_x = 0
+        elif key == arcade.key.RIGHT or key == arcade.key.D:
+            self.player_sprite.change_x = 0
 
-            if sprite.position[0] < 0:
-                sprite.change_x *= -1
-            elif sprite.position[0] > SCREEN_WIDTH:
-                sprite.change_x *= -1
-            if sprite.position[1] < 0:
-                sprite.change_y *= -1
-            elif sprite.position[1] > SCREEN_HEIGHT:
-                sprite.change_y *= -1
+    def on_update(self, delta_time):
+        """Movement and game logic"""
 
-        # Save the time it took to do this.
-        self.processing_time = timeit.default_timer() - start_time
-
-        # Total time program has been running
-        total_program_time = int(timeit.default_timer() - self.program_start_time)
-
-        # Print out stats, or add more sprites
-        if total_program_time > self.last_fps_reading:
-            self.last_fps_reading = total_program_time
-
-            # It takes the program a while to "warm up", so the first
-            # few seconds our readings will be off. So wait some time
-            # before taking readings
-            if total_program_time > 5:
-
-                # We want the program to run for a while before taking
-                # timing measurements. We don't want the time it takes
-                # to add new sprites to be part of that measurement. So
-                # make sure we have a clear second of nothing but
-                # running the sprites, and not adding the sprites.
-                if total_program_time % 2 == 1:
-
-                    # Take timings
-                    output = f"{total_program_time}, {len(self.coin_list)}, {self.fps.get_fps():.1f}, " \
-                             f"{self.processing_time:.4f}, {self.draw_time:.4f}\n"
-
-                    self.results_file.write(output)
-                    print(output, end="")
-                    if len(self.coin_list) >= STOP_COUNT:
-                        pyglet.app.exit()
-                        return
-
-                    self.sprite_count_list.append(len(self.coin_list))
-                    self.fps_list.append(round(self.fps.get_fps(), 1))
-                    self.processing_time_list.append(self.processing_time)
-                    self.drawing_time_list.append(self.draw_time)
-
-                    # Now add the coins
-                    self.add_coins()
+        # Move the player with the physics engine
+        self.physics_engine.update()
 
 
 def main():
-    """ Main function """
+    """Main function"""
     window = MyGame()
     window.setup()
     arcade.run()
